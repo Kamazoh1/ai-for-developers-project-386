@@ -1,0 +1,87 @@
+[settings]
+experimental = true # required for daemons
+
+[tools]
+python = "3.13.18"
+node = "26.13.0"
+uv = "0.13.6"
+hk = "2.10.0"
+pkl = "0.32.2"
+pitchfork = "2.32.4"
+
+# --- setup ---------------------------------------------------------------
+
+[tasks.install]
+description = "Install backend, contract and frontend dependencies"
+run = [
+  "uv sync --project backend --locked",
+  "npm ci --prefix api",
+  "npm ci --prefix frontend",
+]
+
+[tasks.hooks]
+description = "Install git hooks (pre-commit, commit-msg)"
+run = "hk install"
+
+[tasks.generate]
+description = "TypeSpec contract -> OpenAPI -> frontend SDK"
+run = [
+  "npm run build --prefix api",
+  "npm run generate --prefix frontend",
+]
+
+# --- checks (`mise run check` is what CI calls; the pre-commit hook runs `precommit`) ---
+
+[tasks.lint]
+description = "ruff + oxlint + format checks"
+depends = ["generate"]
+run = [
+  "uv run --project backend ruff check backend",
+  "uv run --project backend ruff format --check backend",
+  "npm run lint --prefix frontend",
+  "npm run format:check --prefix frontend",
+]
+
+[tasks.typecheck]
+description = "ty + tsc"
+depends = ["generate"]
+run = [
+  "uv run --project backend ty check backend",
+  "npm run typecheck --prefix frontend",
+]
+
+[tasks.test]
+description = "Smoke test (backend starts and responds)"
+run = "uv run --project backend pytest backend"
+
+[tasks.build]
+description = "Production build of the frontend"
+depends = ["generate"]
+run = "npm run build --prefix frontend"
+
+[tasks.check]
+description = "All checks: lint, types, tests, build"
+depends = ["lint", "typecheck", "test", "build"]
+
+[tasks.precommit]
+description = "Fast checks for the pre-commit hook: lint + types"
+depends = ["lint", "typecheck"]
+
+[tasks.fix]
+description = "Auto-fix lint and formatting"
+run = [
+  "uv run --project backend ruff check --fix backend",
+  "uv run --project backend ruff format backend",
+  "npm run format --prefix frontend",
+]
+
+# --- development servers (mise daemons, managed by pitchfork) ---------------
+# mise daemons start | stop | status | logs
+
+[daemons.backend]
+run = "cd backend && exec uv run fastapi dev --port 8000"
+ready_port = 8000
+
+[daemons.frontend]
+run = "cd frontend && exec npm run dev -- --port 5173 --strictPort"
+ready_port = 5173

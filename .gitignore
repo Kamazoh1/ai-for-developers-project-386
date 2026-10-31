@@ -1,0 +1,17 @@
+# python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# node
+node_modules/
+dist/
+
+# generated from api/main.tsp (run `mise run generate`)
+frontend/src/api/
+
+# editors / os
+.idea/
+.vscode/
+.DS_Store
