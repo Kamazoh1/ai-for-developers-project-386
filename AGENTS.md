@@ -26,3 +26,17 @@ All tooling versions are pinned in `mise.toml`; run everything through mise.
 - The API contract in `api/main.tsp` is the source of truth; change it first, then implement the backend to match.
 - Do not edit or delete `.github/workflows/hexlet-check.yml`.
 - Keep `mise run check` green before committing.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`Kamazoh1/ai-for-developers-project-386`, via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
