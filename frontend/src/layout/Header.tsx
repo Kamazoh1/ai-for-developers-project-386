@@ -7,9 +7,9 @@ export default function Header() {
   return (
     <Container size="lg" h="100%">
       <Group h="100%" justify="space-between" wrap="nowrap">
-        <Link to="/" className={classes.logo}>
+        <Link to="/" className={classes.logo} aria-label="Calendar">
           <IconCalendarClock className={classes.logoIcon} size={22} aria-hidden />
-          Calendar
+          <span className={classes.logoText}>Calendar</span>
         </Link>
         <Group component="nav" gap="xs" wrap="nowrap">
           <NavLink to="/book" className={classes.link}>

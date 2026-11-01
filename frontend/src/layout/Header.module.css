@@ -12,6 +12,7 @@
 }
 
 .link {
+  white-space: nowrap;
   padding: 8px 12px;
   border-radius: var(--mantine-radius-md);
   color: var(--mantine-color-dimmed);
@@ -30,6 +31,10 @@
 
 /* Keep both links on one line in the fixed-height header on phones. */
 @media (max-width: 36em) {
+  .logoText {
+    display: none;
+  }
+
   .link {
     padding: 6px 8px;
     font-size: var(--mantine-font-size-xs);

@@ -13,12 +13,14 @@ export default function Landing() {
   return (
     <>
       <div className={classes.backdrop} aria-hidden />
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" mt={{ base: 0, md: 24 }}>
         <Stack align="flex-start" gap="md">
           <Badge variant="white" size="lg">
             Быстрая запись на звонок
           </Badge>
-          <Title order={1}>Calendar</Title>
+          <Title order={1} fz={{ base: 36, md: 44 }}>
+            Calendar
+          </Title>
           <Text size="lg" c="dimmed">
             Один экран, понятные слоты, быстрая бронь. Выберите время и запишитесь на звонок без
             лишних шагов.
