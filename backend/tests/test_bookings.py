@@ -1,5 +1,6 @@
 """Seam 1: booking a slot over HTTP, with "now" fixed by the test."""
 
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -280,3 +281,34 @@ def test_a_start_without_an_offset_is_a_validation_error(make_client: ClientFact
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
     assert response.json()["fields"][0]["field"] == "start"
+
+
+def test_a_numeric_unix_timestamp_is_not_an_rfc_3339_start(make_client: ClientFactory) -> None:
+    client = make_client(now=NOW)
+    slug = create_type(client, 30)
+
+    for start in (1793000000, 1793000000.0, "1793000000"):
+        body = {"eventTypeId": slug, "start": start, "guestName": "Мария"}
+        response = client.post("/api/bookings", json={**body, "guestEmail": "maria@example.com"})
+
+        assert response.status_code == 422, start
+        assert response.json()["code"] == "validation_error"
+        assert response.json()["fields"][0]["field"] == "start"
+
+
+def test_a_failure_that_already_ended_the_transaction_is_not_masked_by_the_rollback(
+    make_client: ClientFactory, tmp_path: Path
+) -> None:
+    path = tmp_path / "shared.db"
+    client = make_client(now=NOW, database_path=path)
+    slug = create_type(client, 30)
+    other = sqlite3.connect(path, isolation_level=None)
+    # SQLite itself ends the transaction when the insert fails, as it can on a full disk.
+    other.execute(
+        "CREATE TRIGGER fail_insert BEFORE INSERT ON bookings "
+        "BEGIN SELECT RAISE(ROLLBACK, 'insert failed'); END"
+    )
+    other.close()
+
+    with pytest.raises(sqlite3.IntegrityError, match="insert failed"):
+        book(client, slug, "2026-11-06T10:00:00+03:00")

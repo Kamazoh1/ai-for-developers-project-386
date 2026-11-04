@@ -24,9 +24,15 @@ def get_now(request: Request) -> datetime:
     return request.app.state.clock()
 
 
+def get_clock(request: Request) -> Clock:
+    """The clock itself, for a handler that must read the time again after waiting."""
+    return request.app.state.clock
+
+
 def get_calendar_timezone(request: Request) -> ZoneInfo:
     return ZoneInfo(request.app.state.calendar_timezone)
 
 
 Now = Annotated[datetime, Depends(get_now)]
+NowSource = Annotated[Clock, Depends(get_clock)]
 CalendarTimezone = Annotated[ZoneInfo, Depends(get_calendar_timezone)]

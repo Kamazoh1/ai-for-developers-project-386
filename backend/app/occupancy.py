@@ -46,4 +46,6 @@ def without_booked(days: list[SlotDay], booked: list[tuple[datetime, datetime]])
     def is_free(slot: Slot) -> bool:
         return not any(slot.start < end and slot.end > start for start, end in booked)
 
-    return [SlotDay(day.date, [slot for slot in day.slots if is_free(slot)]) for day in days]
+    return [
+        SlotDay(date=day.date, slots=[slot for slot in day.slots if is_free(slot)]) for day in days
+    ]

@@ -96,7 +96,7 @@ run = "npm test --prefix e2e"
 # mise daemons start | stop | status | logs
 
 [daemons.backend]
-run = "cd backend && exec uv run fastapi dev --port 8000"
+run = "cd backend && exec uv run uvicorn --factory app.main:create_app --reload --port 8000"
 ready_port = 8000
 
 [daemons.frontend]

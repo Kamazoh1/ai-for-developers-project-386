@@ -29,6 +29,9 @@ class CalendarSettings(ApiModel):
 def create_app(now: Clock | None = None) -> FastAPI:
     """Build the app. Reads settings from the environment and refuses to start on bad ones.
 
+    There is no module-level ``app``: importing this module has no side effects. Servers
+    start it as a factory: ``uvicorn --factory app.main:create_app``.
+
     ``now`` replaces the system clock (tests fix it); it returns a timezone-aware datetime.
     """
     config = settings.Settings.from_env()
@@ -61,6 +64,3 @@ def create_app(now: Clock | None = None) -> FastAPI:
     app.include_router(bookings.router)
 
     return app
-
-
-app = create_app()

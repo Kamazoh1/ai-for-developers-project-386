@@ -3,7 +3,7 @@ import { adminBookingsApiList, calendarApiGet, eventTypesApiList } from "../../a
 import type { Booking, EventType } from "../../api/types.gen.ts";
 import { RequestBoundary } from "../../request/RequestBoundary.tsx";
 import { useRequest } from "../../request/useRequest.ts";
-import { asUtc, dayAndMonth, localTime, weekdayLong, zoneLabel } from "../SlotPicker.tsx";
+import { asUtc, dayAndMonth, localTime, weekdayLong, zoneLabel } from "../calendarFormat.ts";
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} мин`;

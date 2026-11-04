@@ -19,6 +19,7 @@ All tooling versions are pinned in `mise.toml`; run everything through mise.
 
 - `api/` — TypeSpec contract (`main.tsp`), emits `api/dist/openapi.yaml`
 - `backend/` — FastAPI (Python 3.13, uv). App in `backend/app`, tests in `backend/tests`
+  The app is built by the factory `app.main:create_app` (no module-level `app`, so importing has no side effects); start it with `uvicorn --factory app.main:create_app`
 - `frontend/` — Vite + React + TypeScript + Mantine. `frontend/src/api` is generated, never edit it
 
 ## Rules
