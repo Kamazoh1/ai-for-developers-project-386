@@ -103,6 +103,14 @@ model SlotTaken {
   message: string;
 }
 
+/** The database write lock was not free within 30 seconds (ADR 0002); the request changed nothing and can be retried. */
+@error
+model ServiceBusy {
+  @statusCode _: 503;
+  code: "service_busy";
+  message: string;
+}
+
 // --- event types -----------------------------------------------------------
 
 /** A kind of call the owner offers. */
@@ -231,7 +239,7 @@ model CreateBooking {
 
 @route("/api/bookings")
 interface BookingsApi {
-  /** Book a free slot. The server checks the slot (`422 invalid_slot`) before overlaps (`409 slot_taken`). */
+  /** Book a free slot. The server checks the slot (`422 invalid_slot`) before overlaps (`409 slot_taken`); `503 service_busy` if the write lock times out. */
   @post create(@body body: CreateBooking):
     | {
         @statusCode _: 201;
@@ -239,5 +247,6 @@ interface BookingsApi {
       }
     | ValidationError
     | InvalidSlot
-    | SlotTaken;
+    | SlotTaken
+    | ServiceBusy;
 }
