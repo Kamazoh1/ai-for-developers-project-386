@@ -43,6 +43,18 @@ def list_event_types(db: Annotated[Database, Depends(get_db)]) -> list[EventType
     return [EventType(**dict(row)) for row in rows]
 
 
+@router.get("/api/event-types/{event_type_id}")
+def get_event_type(event_type_id: str, db: Annotated[Database, Depends(get_db)]) -> EventType:
+    with db.connect() as connection:
+        row = connection.execute(
+            "SELECT id, name, description, duration_minutes FROM event_types WHERE id = ?",
+            (event_type_id,),
+        ).fetchone()
+    if row is None:
+        raise ApiError(404, "event_type_not_found", "No event type with this id")
+    return EventType(**dict(row))
+
+
 @router.post("/api/admin/event-types", status_code=status.HTTP_201_CREATED)
 def create_event_type(body: CreateEventType, db: Annotated[Database, Depends(get_db)]) -> EventType:
     try:

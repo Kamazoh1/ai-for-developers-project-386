@@ -79,6 +79,14 @@ model EventTypeExists {
   message: string;
 }
 
+/** No event type has this id. */
+@error
+model EventTypeNotFound {
+  @statusCode _: 404;
+  code: "event_type_not_found";
+  message: string;
+}
+
 // --- event types -----------------------------------------------------------
 
 /** A kind of call the owner offers. */
@@ -119,6 +127,9 @@ model CreateEventType {
 interface EventTypesApi {
   /** All event types, in creation order. */
   @get list(): EventType[];
+
+  /** One event type by its id. */
+  @get get(@path id: string): EventType | EventTypeNotFound;
 }
 
 @route("/api/admin/event-types")
