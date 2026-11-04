@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { apiUrl, booking, eventType, slotWindow } from "../test/api.ts";
-import { renderApp } from "../test/render.tsx";
+import { renderApp, renderAppWithHistory } from "../test/render.tsx";
 import { server } from "../test/server.ts";
 
 const BOOKINGS = apiUrl("/api/bookings");
@@ -214,6 +214,51 @@ describe("booking a slot", () => {
     );
     await userEvent.click(within(form).getByRole("button", { name: "Записаться" }));
     expect(await screen.findByRole("region", { name: "Запись подтверждена" })).toBeVisible();
+  });
+
+  it("shows the general failure notice when only fields the form does not show are rejected", async () => {
+    server.use(
+      http.post(
+        BOOKINGS,
+        () => error(422, "validation_error", { fields: [{ field: "start", message: "bad" }] }),
+        { once: true },
+      ),
+    );
+    await pickFirstSlot();
+
+    await fillAndSubmit("Мария", "maria@example.com");
+
+    const form = screen.getByRole("form", { name: "Запись на 09:00" });
+    expect(await within(form).findByRole("alert")).toHaveTextContent(
+      "Не удалось записаться. Попробуйте ещё раз",
+    );
+    expect(within(form).getByLabelText("Имя")).toHaveValue("Мария");
+    expect(within(form).getByLabelText("Email")).toHaveValue("maria@example.com");
+    expect(within(form).getByLabelText("Имя")).not.toBeInvalid();
+  });
+
+  it("does not show a booking confirmed for one type under another type's address", async () => {
+    server.use(
+      http.get(apiUrl("/api/event-types/:id"), ({ params }) =>
+        HttpResponse.json(
+          params.id === "b"
+            ? eventType({ id: "b", name: "Тип Б" })
+            : eventType({ id: "a", name: "Тип А" }),
+        ),
+      ),
+    );
+    renderAppWithHistory(["/book/a", "/book/b"], 0);
+    await userEvent.click(await screen.findByRole("button", { name: /^6 ноября/ }));
+    await userEvent.click(screen.getByRole("button", { name: FIRST_SLOT }));
+    await fillAndSubmit();
+    const confirmation = await screen.findByRole("region", { name: "Запись подтверждена" });
+    expect(within(confirmation).getByText("Тип А")).toBeVisible();
+
+    await userEvent.click(screen.getByRole("button", { name: "history forward" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Тип Б" })).toBeVisible();
+    expect(screen.queryByRole("region", { name: "Запись подтверждена" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("group", { name: "Дни записи" })).toBeVisible();
   });
 
   it("switches the form to another slot when the guest picks one", async () => {

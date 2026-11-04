@@ -30,9 +30,12 @@ async function book(body: CreateBooking): Promise<Outcome> {
     const error = result.error;
     if (error?.code === "validation_error") {
       const errors: Errors = {};
-      for (const { field } of error.fields)
-        errors[field] = FIELD_RULES[field] ?? "Неверное значение";
-      return { kind: "invalid", errors };
+      for (const { field } of error.fields) {
+        if (field in FIELD_RULES) errors[field] = FIELD_RULES[field];
+      }
+      // Rejected fields the form does not show (the slot, the type) leave nothing to point at:
+      // that is a failure of the request, not of what the guest typed.
+      if (Object.keys(errors).length > 0) return { kind: "invalid", errors };
     }
     if (error?.code === "slot_taken") return { kind: "taken" };
     if (error?.code === "invalid_slot") return { kind: "unavailable" };

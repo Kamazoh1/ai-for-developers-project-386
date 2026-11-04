@@ -6,14 +6,8 @@ import { calendarApiGet, eventTypesApiGet } from "../api/sdk.gen.ts";
 import type { Booking, EventType } from "../api/types.gen.ts";
 import { RequestBoundary } from "../request/RequestBoundary.tsx";
 import { useRequest } from "../request/useRequest.ts";
-import {
-  asUtc,
-  dayAndMonth,
-  localTime,
-  SlotPicker,
-  weekdayLong,
-  zoneLabel,
-} from "./SlotPicker.tsx";
+import { asUtc, dayAndMonth, localTime, weekdayLong, zoneLabel } from "./calendarFormat.ts";
+import { SlotPicker } from "./SlotPicker.tsx";
 
 function BackToTypes() {
   return (
@@ -55,6 +49,12 @@ function Confirmation({
 /** `/book/:eventTypeId`: the type the guest chose, its 14-day window, free slots and booking form. */
 export default function BookEventType() {
   const { eventTypeId = "" } = useParams();
+  // React Router reuses this route's instance when only the id changes (Back, Forward, an edited
+  // address); the key gives every event type its own state, so a confirmation never leaks across.
+  return <EventTypeBooking key={eventTypeId} eventTypeId={eventTypeId} />;
+}
+
+function EventTypeBooking({ eventTypeId }: { eventTypeId: string }) {
   // An unknown id is an answer, not a failure: it resolves to `null`; anything else wrong is an error.
   const eventType = useRequest(async () => {
     const result = await eventTypesApiGet({ path: { id: eventTypeId } });
