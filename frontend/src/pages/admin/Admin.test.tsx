@@ -254,6 +254,31 @@ describe("creating an event type", () => {
     expect(await screen.findByRole("article")).toHaveTextContent("Знакомство");
   });
 
+  it("asks to try again when the service is busy, keeping the entered values", async () => {
+    backendWithTypes();
+    server.use(
+      http.post(
+        CREATE,
+        () => HttpResponse.json({ code: "service_busy", message: "busy" }, { status: 503 }),
+        { once: true },
+      ),
+    );
+    renderApp("/admin/event-types");
+
+    const dialog = await openForm();
+    await fill(dialog, { name: "Знакомство", id: "intro", duration: "15" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Создать тип события" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Сервис занят. Попробуйте ещё раз",
+    );
+    expect(within(dialog).getByLabelText(/Идентификатор/)).toHaveValue("intro");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Создать тип события" }));
+
+    expect(await screen.findByRole("article")).toHaveTextContent("Знакомство");
+  });
+
   it("disables the submit button while the request is running", async () => {
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => (release = resolve));

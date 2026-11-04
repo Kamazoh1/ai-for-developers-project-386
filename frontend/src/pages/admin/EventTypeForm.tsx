@@ -16,7 +16,11 @@ type Errors = Partial<Record<string, string>>;
  * Outcome of the create call, read straight from the SDK result: the SDK does not throw
  * on error responses, and `useRequest` only covers GETs. A network failure rejects.
  */
-async function create(body: Parameters<typeof adminEventTypesApiCreate>[0]["body"]) {
+type Outcome = { ok: true } | { ok: false; errors: Errors; notice?: string };
+
+async function create(
+  body: Parameters<typeof adminEventTypesApiCreate>[0]["body"],
+): Promise<Outcome> {
   try {
     const result = await adminEventTypesApiCreate({ body });
     if (result.data) return { ok: true as const };
@@ -30,10 +34,13 @@ async function create(body: Parameters<typeof adminEventTypesApiCreate>[0]["body
     if (error?.code === "event_type_exists") {
       return { ok: false as const, errors: { id: "Тип с таким id уже есть" } };
     }
+    if (error?.code === "service_busy") {
+      return { ok: false as const, errors: {}, notice: "Сервис занят. Попробуйте ещё раз" };
+    }
   } catch {
     // fall through: handled like any other failure
   }
-  return { ok: false as const, errors: {}, failed: true };
+  return { ok: false as const, errors: {}, notice: "Не удалось создать тип. Попробуйте ещё раз" };
 }
 
 export default function EventTypeForm({ onCreated }: { onCreated: () => void }) {
@@ -42,14 +49,14 @@ export default function EventTypeForm({ onCreated }: { onCreated: () => void }) 
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState<number | string>(30);
   const [errors, setErrors] = useState<Errors>({});
-  const [failed, setFailed] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPending(true);
     setErrors({});
-    setFailed(false);
+    setNotice(null);
     const outcome = await create({
       id,
       name,
@@ -61,16 +68,16 @@ export default function EventTypeForm({ onCreated }: { onCreated: () => void }) 
       onCreated();
     } else {
       setErrors(outcome.errors);
-      setFailed("failed" in outcome);
+      setNotice(outcome.notice ?? null);
     }
   };
 
   return (
     <form onSubmit={submit} noValidate>
       <Stack gap="sm">
-        {failed && (
+        {notice && (
           <Alert color="red" role="alert">
-            Не удалось создать тип. Попробуйте ещё раз
+            {notice}
           </Alert>
         )}
         <TextInput

@@ -188,14 +188,15 @@ interface EventTypesApi {
 
 @route("/api/admin/event-types")
 interface AdminEventTypesApi {
-  /** Create an event type. */
+  /** Create an event type. `503 service_busy` if the write lock times out; nothing was created and the request can be retried. */
   @post create(@body body: CreateEventType):
     | {
         @statusCode _: 201;
         @body body: EventType;
       }
     | ValidationError
-    | EventTypeExists;
+    | EventTypeExists
+    | ServiceBusy;
 }
 
 // --- bookings --------------------------------------------------------------
