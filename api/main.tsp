@@ -87,6 +87,22 @@ model EventTypeNotFound {
   message: string;
 }
 
+/** The requested slot is not a valid, still bookable start: off the grid, outside working hours or the booking window, already started, or of an unknown event type. */
+@error
+model InvalidSlot {
+  @statusCode _: 422;
+  code: "invalid_slot";
+  message: string;
+}
+
+/** The requested interval overlaps an existing booking, of any event type. */
+@error
+model SlotTaken {
+  @statusCode _: 409;
+  code: "slot_taken";
+  message: string;
+}
+
 // --- event types -----------------------------------------------------------
 
 /** A kind of call the owner offers. */
@@ -172,4 +188,56 @@ interface AdminEventTypesApi {
       }
     | ValidationError
     | EventTypeExists;
+}
+
+// --- bookings --------------------------------------------------------------
+
+/** A taken interval `[start, end)` of one event type and the guest who took it. */
+model Booking {
+  /** Assigned by the server. */
+  id: int32;
+
+  eventTypeId: string;
+
+  /** Start instant, RFC 3339 with the calendar timezone's offset. */
+  start: offsetDateTime;
+
+  /** End instant, computed by the server from the event type's duration. */
+  end: offsetDateTime;
+
+  guestName: string;
+  guestEmail: string;
+
+  /** When the booking was made, RFC 3339 with the calendar timezone's offset. */
+  createdAt: offsetDateTime;
+}
+
+model CreateBooking {
+  eventTypeId: string;
+
+  /** Any RFC 3339 offset is accepted and compared as an instant; it must equal the start of a free slot of the event type. */
+  start: offsetDateTime;
+
+  /** 1-100 characters after trimming surrounding whitespace. */
+  @minLength(1)
+  @maxLength(100)
+  guestName: string;
+
+  /** 1-50 characters after trimming surrounding whitespace, and a valid email address. */
+  @minLength(1)
+  @maxLength(50)
+  guestEmail: string;
+}
+
+@route("/api/bookings")
+interface BookingsApi {
+  /** Book a free slot. The server checks the slot (`422 invalid_slot`) before overlaps (`409 slot_taken`). */
+  @post create(@body body: CreateBooking):
+    | {
+        @statusCode _: 201;
+        @body body: Booking;
+      }
+    | ValidationError
+    | InvalidSlot
+    | SlotTaken;
 }

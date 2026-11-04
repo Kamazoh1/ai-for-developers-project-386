@@ -1,4 +1,4 @@
-import type { CalendarSettings, EventType, Slots } from "../api/types.gen.ts";
+import type { Booking, CalendarSettings, EventType, Slots } from "../api/types.gen.ts";
 
 /** Base URL the app talks to in tests (see `test.env` in vite.config.ts). */
 const API_URL = import.meta.env.VITE_API_URL;
@@ -51,4 +51,18 @@ export function slotWindow(freeByDate: Record<string, SlotTimes[]> = {}): Slots 
     return { date, slots };
   });
   return { days };
+}
+
+/** A confirmed booking; the defaults match the first fixture slot (`slotWindow`, 06 Nov 09:00-09:30). */
+export function booking(overrides: Partial<Booking> = {}): Booking {
+  return {
+    id: 1,
+    eventTypeId: "intro-call",
+    start: "2026-11-06T09:00:00+03:00",
+    end: "2026-11-06T09:30:00+03:00",
+    guestName: "Мария",
+    guestEmail: "maria@example.com",
+    createdAt: "2026-11-05T10:00:00+03:00",
+    ...overrides,
+  };
 }
