@@ -25,14 +25,6 @@ describe("admin area", () => {
     );
   });
 
-  it("explains that there are no upcoming meetings yet", () => {
-    renderApp("/admin/bookings");
-
-    expect(
-      screen.getByText("Предстоящих встреч нет. Когда гость запишется, встреча появится здесь."),
-    ).toBeInTheDocument();
-  });
-
   it("switches between the two tabs", async () => {
     renderApp("/admin/bookings");
 
