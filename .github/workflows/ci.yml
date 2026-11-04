@@ -18,3 +18,19 @@ jobs:
 
       - run: mise run install
       - run: mise run check
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.10.24
+          experimental: true
+
+      - run: mise run install
+      - run: mise run e2e:install
+      # System libraries Chromium needs on a bare runner.
+      - run: npm exec --prefix e2e -- playwright install-deps chromium
+      - run: mise run e2e
