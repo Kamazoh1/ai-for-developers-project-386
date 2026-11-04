@@ -1,19 +1,7 @@
-import { MantineProvider } from "@mantine/core";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import App from "./App.tsx";
-
-function renderAt(path: string) {
-  return render(
-    <MantineProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>
-    </MantineProvider>,
-  );
-}
+import { renderApp as renderAt } from "./test/render.tsx";
 
 describe("landing page", () => {
   it("presents the product and what is available right now", () => {
