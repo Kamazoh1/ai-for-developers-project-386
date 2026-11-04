@@ -21,9 +21,9 @@ describe("landing page", () => {
     ).toBeInTheDocument();
     const features = within(main).getAllByRole("listitem");
     expect(features.map((item) => item.textContent)).toEqual([
-      "Фиксированные 30-минутные слоты с 09:00 до 18:00.",
+      "Звонки разной длительности на выбор.",
+      "Свободные слоты на ближайшие две недели.",
       "Проверка конфликта при бронировании.",
-      "Просмотр предстоящих событий в отдельном разделе.",
     ]);
   });
 
