@@ -10,6 +10,7 @@ All tooling versions are pinned in `mise.toml`; run everything through mise.
 - `mise run hooks` — install git hooks (pre-commit runs `mise run precommit`: lint + types)
 - `mise run check` — lint + types + tests + build (what CI runs)
 - `mise run test` — pytest only
+- `mise run e2e` — browser scenario (Playwright) on a real backend and frontend; not part of `check`, needs `mise run e2e:install` once
 - `mise run fix` — auto-fix lint and formatting
 - `mise run generate` — rebuild OpenAPI and the frontend SDK after editing `api/main.tsp`
 - `mise daemons start|stop|status|logs` — dev servers: backend :8000, frontend :5173
