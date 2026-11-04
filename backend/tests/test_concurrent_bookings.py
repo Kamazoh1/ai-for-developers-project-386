@@ -137,3 +137,51 @@ def test_a_booking_that_cannot_get_the_write_lock_in_time_gets_503_service_busy(
     # Nothing was written, and the guest can simply try again.
     retry = client.post("/api/bookings", json=booking_body(slug, "2026-11-06T10:00:00+03:00"))
     assert retry.status_code == 201
+
+
+def test_a_slot_that_started_while_waiting_for_the_write_lock_is_rejected_as_invalid(
+    make_client: ClientFactory, tmp_path: Path
+) -> None:
+    database = tmp_path / "shared.db"
+    clock = {"now": NOW}
+    client = make_client(now=lambda: clock["now"], database_path=database, lock_timeout_seconds=10)
+    slug = create_type(client, 30, "call")
+    other = sqlite3.connect(database, isolation_level=None, check_same_thread=False)
+    other.execute("BEGIN IMMEDIATE")  # another server process is writing
+
+    def release_after_the_slot_has_started() -> None:
+        clock["now"] = datetime(2026, 11, 5, 10, 45, tzinfo=MSK)
+        other.execute("COMMIT")
+
+    threading.Timer(0.3, release_after_the_slot_has_started).start()
+
+    # Valid at 10:00 when the request arrives, already started at 10:45 when the lock is free.
+    response = client.post("/api/bookings", json=booking_body(slug, "2026-11-05T10:30:00+03:00"))
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_slot"
+    other.close()
+    assert client.get("/api/admin/bookings").json() == []
+
+
+def test_created_at_is_the_time_the_booking_was_written_not_the_time_the_request_arrived(
+    make_client: ClientFactory, tmp_path: Path
+) -> None:
+    database = tmp_path / "shared.db"
+    clock = {"now": NOW}
+    client = make_client(now=lambda: clock["now"], database_path=database, lock_timeout_seconds=10)
+    slug = create_type(client, 30, "call")
+    other = sqlite3.connect(database, isolation_level=None, check_same_thread=False)
+    other.execute("BEGIN IMMEDIATE")
+
+    def release_later() -> None:
+        clock["now"] = datetime(2026, 11, 5, 10, 20, tzinfo=MSK)
+        other.execute("COMMIT")
+
+    threading.Timer(0.3, release_later).start()
+
+    response = client.post("/api/bookings", json=booking_body(slug, "2026-11-06T10:00:00+03:00"))
+
+    assert response.status_code == 201
+    assert response.json()["createdAt"] == "2026-11-05T10:20:00+03:00"
+    other.close()

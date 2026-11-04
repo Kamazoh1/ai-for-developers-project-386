@@ -6,20 +6,21 @@ inside one write-locked transaction, the overlap check and the insert (``409 slo
 If the write lock is not free within the lock timeout the answer is ``503 service_busy``.
 """
 
+import re
 import sqlite3
 from datetime import datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from pydantic import AwareDatetime, StringConstraints
+from pydantic import AwareDatetime, BeforeValidator, StringConstraints
 
-from app.clock import CalendarTimezone, Now
-from app.db import Database, get_db
+from app.clock import CalendarTimezone, Now, NowSource
+from app.db import Database, get_db, lock_timeout_as_service_busy
 from app.errors import ApiError
 from app.event_types import find_event_type
 from app.occupancy import conflicts_with_booking, from_stored, to_stored
 from app.schemas import ApiModel
-from app.slots import window_slots
+from app.slots import is_slot_start
 
 GuestName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 GuestEmail = Annotated[
@@ -30,9 +31,22 @@ GuestEmail = Annotated[
 ]
 
 
+_RFC_3339 = re.compile(r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$")
+
+
+def _require_rfc_3339(value: object) -> object:
+    """Only RFC 3339 text: pydantic's lax datetime would also take Unix timestamps."""
+    if not isinstance(value, str) or not _RFC_3339.fullmatch(value):
+        raise ValueError("must be an RFC 3339 date-time with an offset")
+    return value
+
+
+OffsetDateTime = Annotated[AwareDatetime, BeforeValidator(_require_rfc_3339)]
+
+
 class CreateBooking(ApiModel):
     event_type_id: str
-    start: AwareDatetime
+    start: OffsetDateTime
     guest_name: GuestName
     guest_email: GuestEmail
 
@@ -59,33 +73,35 @@ def create_booking(
     body: CreateBooking,
     db: Annotated[Database, Depends(get_db)],
     now: Now,
+    clock: NowSource,
     timezone: CalendarTimezone,
 ) -> Booking:
     with db.connect() as connection:
         event_type = find_event_type(connection, body.event_type_id)
         if event_type is None:
             raise invalid_slot()
-        # The slots the type could offer ignoring bookings: the grid, hours and window rules
-        # are those of the slots endpoint, so a start is valid exactly when it is one of them.
-        offered = {
-            slot.start
-            for day in window_slots(now, timezone, event_type.duration_minutes)
-            for slot in day.slots
-        }
-        if body.start not in offered:
+        duration = event_type.duration_minutes
+        # A start is valid exactly when the slots endpoint would offer it, bookings aside.
+        if not is_slot_start(now, timezone, duration, body.start):
             raise invalid_slot()
 
-        end = body.start + timedelta(minutes=event_type.duration_minutes)
-        created_at = now.replace(microsecond=0)
+        end = body.start + timedelta(minutes=duration)
         # Check and insert under one write lock (ADR 0002); the connection is in autocommit mode.
         _begin_write(connection)
         try:
+            # Waiting for the lock can take long: read the clock again, and check the start
+            # against it, so the booking is neither of a slot that has started meanwhile nor
+            # stamped with the time the request arrived.
+            written_at = clock()
+            if not is_slot_start(written_at, timezone, duration, body.start):
+                raise invalid_slot()
+            created_at = written_at.replace(microsecond=0)
             if conflicts_with_booking(connection, body.start, end):
                 raise ApiError(409, "slot_taken", "The time overlaps an existing booking")
             booking_id = _insert(connection, body, end, created_at)
             connection.execute("COMMIT")
         except BaseException:
-            connection.execute("ROLLBACK")
+            _rollback(connection)
             raise
 
     return Booking(
@@ -101,14 +117,18 @@ def create_booking(
 
 def _begin_write(connection: sqlite3.Connection) -> None:
     """Take the write lock, waiting up to the connection timeout; then ``503 service_busy``."""
-    try:
+    with lock_timeout_as_service_busy():
         connection.execute("BEGIN IMMEDIATE")
-    except sqlite3.OperationalError as error:
-        if error.sqlite_errorcode is not None and (
-            error.sqlite_errorcode & 0xFF in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
-        ):
-            raise ApiError(503, "service_busy", "The service is busy, try again") from error
-        raise
+
+
+def _rollback(connection: sqlite3.Connection) -> None:
+    """Undo the open transaction, if any, without replacing the error being handled.
+
+    SQLite may already have ended the transaction itself (a failed COMMIT, a full disk);
+    a ``ROLLBACK`` then would raise and hide the original error.
+    """
+    if connection.in_transaction:
+        connection.execute("ROLLBACK")
 
 
 def _insert(

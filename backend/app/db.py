@@ -13,6 +13,8 @@ from contextlib import closing, contextmanager
 
 from fastapi import Request
 
+from app.errors import ApiError
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS event_types (
     id               TEXT PRIMARY KEY,
@@ -53,6 +55,22 @@ class Database:
             # WAL lets readers proceed while a booking transaction holds the write lock.
             connection.execute("PRAGMA journal_mode=WAL")
             connection.executescript(SCHEMA)
+
+
+@contextmanager
+def lock_timeout_as_service_busy() -> Generator[None]:
+    """Turn "the write lock was not free within the lock timeout" into ``503 service_busy``.
+
+    Wrap any statement that takes the write lock. The request changed nothing and can be retried.
+    """
+    try:
+        yield
+    except sqlite3.OperationalError as error:
+        if error.sqlite_errorcode is not None and (
+            error.sqlite_errorcode & 0xFF in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+        ):
+            raise ApiError(503, "service_busy", "The service is busy, try again") from error
+        raise
 
 
 def get_db(request: Request) -> Database:

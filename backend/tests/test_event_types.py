@@ -1,3 +1,4 @@
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -153,6 +154,24 @@ def test_a_duplicate_id_is_a_conflict(client: TestClient) -> None:
     assert isinstance(body["message"], str)
     assert "fields" not in body
     assert client.get("/api/event-types").json() == [INTRO]
+
+
+def test_creating_a_type_that_cannot_get_the_write_lock_in_time_gets_503_service_busy(
+    make_client: ClientFactory, tmp_path: Path
+) -> None:
+    database = tmp_path / "shared.db"
+    client = make_client(database_path=database, lock_timeout_seconds=0.2)
+    other = sqlite3.connect(database, isolation_level=None)
+    other.execute("BEGIN IMMEDIATE")  # another server process holds the write lock
+
+    busy = client.post("/api/admin/event-types", json=INTRO)
+
+    assert busy.status_code == 503
+    assert busy.json()["code"] == "service_busy"
+    other.execute("ROLLBACK")
+    other.close()
+    # Nothing was written, and the owner can simply try again.
+    assert client.post("/api/admin/event-types", json=INTRO).status_code == 201
 
 
 def test_guest_opens_one_event_type_by_id(client: TestClient) -> None:
