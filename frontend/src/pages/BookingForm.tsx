@@ -36,8 +36,7 @@ async function book(body: CreateBooking): Promise<Outcome> {
     }
     if (error?.code === "slot_taken") return { kind: "taken" };
     if (error?.code === "invalid_slot") return { kind: "unavailable" };
-    // `service_busy` (503) is not in the contract yet; recognise it by status.
-    if (result.response?.status === 503) return { kind: "busy" };
+    if (error?.code === "service_busy") return { kind: "busy" };
   } catch {
     // fall through: handled like any other failure
   }

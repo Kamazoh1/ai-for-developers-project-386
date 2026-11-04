@@ -3,6 +3,7 @@
 Checks run in a fixed order: request validation (``422 validation_error``, done by the
 framework), then everything that does not depend on bookings (``422 invalid_slot``), then,
 inside one write-locked transaction, the overlap check and the insert (``409 slot_taken``).
+If the write lock is not free within the lock timeout the answer is ``503 service_busy``.
 """
 
 import sqlite3
@@ -77,7 +78,7 @@ def create_booking(
         end = body.start + timedelta(minutes=event_type.duration_minutes)
         created_at = now.replace(microsecond=0)
         # Check and insert under one write lock (ADR 0002); the connection is in autocommit mode.
-        connection.execute("BEGIN IMMEDIATE")
+        _begin_write(connection)
         try:
             if conflicts_with_booking(connection, body.start, end):
                 raise ApiError(409, "slot_taken", "The time overlaps an existing booking")
@@ -96,6 +97,18 @@ def create_booking(
         guest_email=body.guest_email,
         created_at=created_at.astimezone(timezone),
     )
+
+
+def _begin_write(connection: sqlite3.Connection) -> None:
+    """Take the write lock, waiting up to the connection timeout; then ``503 service_busy``."""
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+    except sqlite3.OperationalError as error:
+        if error.sqlite_errorcode is not None and (
+            error.sqlite_errorcode & 0xFF in (sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED)
+        ):
+            raise ApiError(503, "service_busy", "The service is busy, try again") from error
+        raise
 
 
 def _insert(
