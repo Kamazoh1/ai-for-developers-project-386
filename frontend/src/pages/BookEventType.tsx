@@ -1,10 +1,19 @@
-import { Anchor, Badge, Stack, Text, Title } from "@mantine/core";
+import { Anchor, Badge, Paper, Stack, Text, Title } from "@mantine/core";
 import { IconArrowLeft } from "@tabler/icons-react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { eventTypesApiGet } from "../api/sdk.gen.ts";
+import { calendarApiGet, eventTypesApiGet } from "../api/sdk.gen.ts";
+import type { Booking, EventType } from "../api/types.gen.ts";
 import { RequestBoundary } from "../request/RequestBoundary.tsx";
 import { useRequest } from "../request/useRequest.ts";
-import { SlotPicker } from "./SlotPicker.tsx";
+import {
+  asUtc,
+  dayAndMonth,
+  localTime,
+  SlotPicker,
+  weekdayLong,
+  zoneLabel,
+} from "./SlotPicker.tsx";
 
 function BackToTypes() {
   return (
@@ -14,7 +23,36 @@ function BackToTypes() {
   );
 }
 
-/** `/book/:eventTypeId`: the type the guest chose, its 14-day window and free slots. */
+function Confirmation({
+  booking,
+  type,
+  zone,
+  owner,
+}: {
+  booking: Booking;
+  type: EventType;
+  zone: string;
+  owner: string;
+}) {
+  // The booking arrives in the calendar zone's offset, so its date is the first 10 characters.
+  const day = asUtc(booking.start.slice(0, 10));
+  return (
+    <Paper component="section" withBorder p="md" aria-label="Запись подтверждена">
+      <Stack gap="xs">
+        <Title order={2} size="h4">
+          Запись подтверждена
+        </Title>
+        <Text fw={700}>{type.name}</Text>
+        <Text>{`${dayAndMonth.format(day)}, ${weekdayLong.format(day)}`}</Text>
+        <Text>{`${localTime(booking.start)} – ${localTime(booking.end)} ${zone}`}</Text>
+        <Text c="dimmed">{`Вы записаны к: ${owner}`}</Text>
+        <Text c="dimmed">{`${booking.guestName}, ${booking.guestEmail}`}</Text>
+      </Stack>
+    </Paper>
+  );
+}
+
+/** `/book/:eventTypeId`: the type the guest chose, its 14-day window, free slots and booking form. */
 export default function BookEventType() {
   const { eventTypeId = "" } = useParams();
   // An unknown id is an answer, not a failure: it resolves to `null`; anything else wrong is an error.
@@ -22,6 +60,9 @@ export default function BookEventType() {
     const result = await eventTypesApiGet({ path: { id: eventTypeId } });
     return result.response?.status === 404 ? { data: null } : result;
   }, eventTypeId);
+  const calendar = useRequest(() => calendarApiGet());
+  // Once booked, the confirmation replaces the slots at the same address.
+  const [booked, setBooked] = useState<Booking | null>(null);
 
   return (
     <Stack>
@@ -39,7 +80,24 @@ export default function BookEventType() {
                 {`${type.durationMinutes} минут`}
               </Badge>
               {type.description && <Text c="dimmed">{type.description}</Text>}
-              <SlotPicker eventTypeId={type.id} />
+              <RequestBoundary request={calendar}>
+                {(settings) =>
+                  booked ? (
+                    <Confirmation
+                      booking={booked}
+                      type={type}
+                      zone={zoneLabel(settings.timezone)}
+                      owner={settings.owner.name}
+                    />
+                  ) : (
+                    <SlotPicker
+                      eventTypeId={type.id}
+                      zone={zoneLabel(settings.timezone)}
+                      onBooked={setBooked}
+                    />
+                  )
+                }
+              </RequestBoundary>
               <BackToTypes />
             </>
           )

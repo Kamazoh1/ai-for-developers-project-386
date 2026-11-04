@@ -1,20 +1,37 @@
-import { Button, Group, Paper, Skeleton, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Group,
+  Paper,
+  Skeleton,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { useState } from "react";
-import { calendarApiGet, eventTypesApiSlots } from "../api/sdk.gen.ts";
-import type { Slot, SlotDay } from "../api/types.gen.ts";
+import { eventTypesApiSlots } from "../api/sdk.gen.ts";
+import type { Booking, Slot, SlotDay } from "../api/types.gen.ts";
 import { RequestBoundary } from "../request/RequestBoundary.tsx";
 import { useRequest } from "../request/useRequest.ts";
+import { BookingForm } from "./BookingForm.tsx";
 
 // Days are plain dates ("2026-11-06"); format them as UTC so the guest's zone cannot shift them.
-const weekdayShort = new Intl.DateTimeFormat("ru-RU", { weekday: "short", timeZone: "UTC" });
-const dayAndMonth = new Intl.DateTimeFormat("ru-RU", {
+const weekdayShort = new Intl.DateTimeFormat("ru-RU", {
+  weekday: "short",
+  timeZone: "UTC",
+});
+export const dayAndMonth = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",
   timeZone: "UTC",
 });
-const weekdayLong = new Intl.DateTimeFormat("ru-RU", { weekday: "long", timeZone: "UTC" });
+export const weekdayLong = new Intl.DateTimeFormat("ru-RU", {
+  weekday: "long",
+  timeZone: "UTC",
+});
 
-const asUtc = (date: string) => new Date(`${date}T00:00:00Z`);
+export const asUtc = (date: string) => new Date(`${date}T00:00:00Z`);
 
 // Browsers disagree on Russian zone abbreviations (`МСК`, `MSK` or `GMT+3`), so name them ourselves.
 const RUSSIAN_ZONES: Record<string, string> = {
@@ -35,14 +52,15 @@ const RUSSIAN_ZONES: Record<string, string> = {
 export function zoneLabel(timeZone: string): string {
   const known = RUSSIAN_ZONES[timeZone];
   if (known) return known;
-  const parts = new Intl.DateTimeFormat("ru-RU", { timeZone, timeZoneName: "short" }).formatToParts(
-    new Date(),
-  );
+  const parts = new Intl.DateTimeFormat("ru-RU", {
+    timeZone,
+    timeZoneName: "short",
+  }).formatToParts(new Date());
   return parts.find((part) => part.type === "timeZoneName")?.value ?? timeZone;
 }
 
 /** `09:00` out of `2026-11-06T09:00:00+03:00`: slots arrive in the calendar zone's offset. */
-const localTime = (instant: string) => instant.slice(11, 16);
+export const localTime = (instant: string) => instant.slice(11, 16);
 
 export const slotLabel = (slot: Slot) => `${localTime(slot.start)} – ${localTime(slot.end)}`;
 
@@ -88,21 +106,55 @@ function SlotsSkeleton() {
   );
 }
 
-function Window({ days, zone }: { days: SlotDay[]; zone: string }) {
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+const SLOT_LOST: Record<"taken" | "unavailable", string> = {
+  taken: "Это время уже занято. Выберите другое",
+  unavailable: "Время недоступно",
+};
+
+type WindowProps = {
+  days: SlotDay[];
+  zone: string;
+  eventTypeId: string;
+  selectedDate: string | null;
+  onSelectDate: (date: string) => void;
+  notice: string | null;
+  onBooked: (booking: Booking) => void;
+  onSlotLost: (reason: "taken" | "unavailable") => void;
+};
+
+function Window({
+  days,
+  zone,
+  eventTypeId,
+  selectedDate,
+  onSelectDate,
+  notice,
+  onBooked,
+  onSlotLost,
+}: WindowProps) {
+  const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const selected = days.find((day) => day.date === selectedDate);
+  const chosen = selected?.slots.find((slot) => slot.start === selectedStart);
 
   const nothingFree = days.every((day) => day.slots.length === 0);
 
   return (
     <Stack>
+      {notice && (
+        <Alert color="yellow" role="alert">
+          {notice}
+        </Alert>
+      )}
       <SimpleGrid cols={{ base: 4, xs: 7 }} spacing="xs" role="group" aria-label="Дни записи">
         {days.map((day) => (
           <DayButton
             key={day.date}
             day={day}
             selected={day.date === selectedDate}
-            onSelect={() => setSelectedDate(day.date)}
+            onSelect={() => {
+              onSelectDate(day.date);
+              setSelectedStart(null);
+            }}
           />
         ))}
       </SimpleGrid>
@@ -122,11 +174,31 @@ function Window({ days, zone }: { days: SlotDay[]; zone: string }) {
             </Group>
             <SimpleGrid cols={{ base: 2, xs: 3, sm: 4 }} spacing="xs" component="ul" p={0} m={0}>
               {selected.slots.map((slot) => (
-                <Text key={slot.start} component="li" ta="center" style={{ listStyle: "none" }}>
-                  {slotLabel(slot)}
-                </Text>
+                <li key={slot.start} style={{ listStyle: "none" }}>
+                  <Button
+                    fullWidth
+                    variant={slot.start === selectedStart ? "filled" : "default"}
+                    aria-pressed={slot.start === selectedStart}
+                    onClick={() => setSelectedStart(slot.start)}
+                  >
+                    {slotLabel(slot)}
+                  </Button>
+                </li>
               ))}
             </SimpleGrid>
+            {chosen && (
+              <BookingForm
+                key={chosen.start}
+                eventTypeId={eventTypeId}
+                start={chosen.start}
+                time={localTime(chosen.start)}
+                onBooked={onBooked}
+                onSlotLost={(reason) => {
+                  setSelectedStart(null);
+                  onSlotLost(reason);
+                }}
+              />
+            )}
           </Stack>
         </Paper>
       ) : nothingFree ? (
@@ -141,17 +213,43 @@ function Window({ days, zone }: { days: SlotDay[]; zone: string }) {
   );
 }
 
-/** The booking window of an event type: 14 days to choose from, the free slots of the chosen one. */
-export function SlotPicker({ eventTypeId }: { eventTypeId: string }) {
-  const calendar = useRequest(() => calendarApiGet());
+/**
+ * The booking window of an event type: 14 days to choose from, the free slots of the chosen
+ * one, and the booking form of the chosen slot. A slot that turns out taken or invalid sends
+ * the guest back to the choice with a notice, and the slots are loaded again.
+ */
+export function SlotPicker({
+  eventTypeId,
+  zone,
+  onBooked,
+}: {
+  eventTypeId: string;
+  zone: string;
+  onBooked: (booking: Booking) => void;
+}) {
   const slots = useRequest(() => eventTypesApiSlots({ path: { id: eventTypeId } }), eventTypeId);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   return (
     <RequestBoundary request={slots} skeleton={<SlotsSkeleton />}>
       {({ days }) => (
-        <RequestBoundary request={calendar}>
-          {(settings) => <Window days={days} zone={zoneLabel(settings.timezone)} />}
-        </RequestBoundary>
+        <Window
+          days={days}
+          zone={zone}
+          eventTypeId={eventTypeId}
+          selectedDate={selectedDate}
+          onSelectDate={(date) => {
+            setSelectedDate(date);
+            setNotice(null);
+          }}
+          notice={notice}
+          onBooked={onBooked}
+          onSlotLost={(reason) => {
+            setNotice(SLOT_LOST[reason]);
+            slots.reload();
+          }}
+        />
       )}
     </RequestBoundary>
   );
