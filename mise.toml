@@ -51,8 +51,11 @@ run = [
 ]
 
 [tasks.test]
-description = "Smoke test (backend starts and responds)"
-run = "uv run --project backend pytest backend"
+description = "Backend pytest + frontend vitest"
+run = [
+  "uv run --project backend pytest backend",
+  "npm run test --prefix frontend",
+]
 
 [tasks.build]
 description = "Production build of the frontend"
