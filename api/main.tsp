@@ -250,3 +250,9 @@ interface BookingsApi {
     | SlotTaken
     | ServiceBusy;
 }
+
+@route("/api/admin/bookings")
+interface AdminBookingsApi {
+  /** Upcoming bookings of all event types, earliest start first: those that end later than now, so a meeting in progress is still listed. No pagination. */
+  @get list(): Booking[];
+}

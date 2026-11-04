@@ -17,7 +17,7 @@ from app.clock import CalendarTimezone, Now
 from app.db import Database, get_db
 from app.errors import ApiError
 from app.event_types import find_event_type
-from app.occupancy import conflicts_with_booking, to_stored
+from app.occupancy import conflicts_with_booking, from_stored, to_stored
 from app.schemas import ApiModel
 from app.slots import window_slots
 
@@ -128,3 +128,28 @@ def _insert(
     )
     assert cursor.lastrowid is not None
     return cursor.lastrowid
+
+
+@router.get("/api/admin/bookings")
+def list_upcoming_bookings(
+    db: Annotated[Database, Depends(get_db)], now: Now, timezone: CalendarTimezone
+) -> list[Booking]:
+    """Bookings that end later than now, earliest start first; no pagination."""
+    with db.connect() as connection:
+        rows = connection.execute(
+            "SELECT id, event_type_id, start_utc, end_utc, guest_name, guest_email, created_at "
+            "FROM bookings WHERE end_utc > ? ORDER BY start_utc",
+            (to_stored(now),),
+        ).fetchall()
+    return [
+        Booking(
+            id=row["id"],
+            event_type_id=row["event_type_id"],
+            start=from_stored(row["start_utc"]).astimezone(timezone),
+            end=from_stored(row["end_utc"]).astimezone(timezone),
+            guest_name=row["guest_name"],
+            guest_email=row["guest_email"],
+            created_at=from_stored(row["created_at"]).astimezone(timezone),
+        )
+        for row in rows
+    ]
