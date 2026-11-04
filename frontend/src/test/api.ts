@@ -1,4 +1,4 @@
-import type { CalendarSettings, EventType } from "../api/types.gen.ts";
+import type { CalendarSettings, EventType, Slots } from "../api/types.gen.ts";
 
 /** Base URL the app talks to in tests (see `test.env` in vite.config.ts). */
 const API_URL = import.meta.env.VITE_API_URL;
@@ -28,4 +28,27 @@ export function eventType(overrides: Partial<EventType> = {}): EventType {
     durationMinutes: 15,
     ...overrides,
   };
+}
+
+/** First day of the fixture booking window (a Thursday); see `slotWindow`. */
+export const WINDOW_START = "2026-11-05";
+
+/** A slot's start and end as local times, e.g. `["09:00", "09:30"]`. */
+export type SlotTimes = [start: string, end: string];
+
+/**
+ * A booking window of 14 days from `WINDOW_START`, Moscow time (+03:00). Days not listed
+ * in `freeByDate` are empty: `slotWindow({ "2026-11-06": [["09:00", "09:30"]] })`.
+ */
+export function slotWindow(freeByDate: Record<string, SlotTimes[]> = {}): Slots {
+  const first = new Date(`${WINDOW_START}T00:00:00Z`);
+  const days = Array.from({ length: 14 }, (_, n) => {
+    const date = new Date(first.getTime() + n * 86_400_000).toISOString().slice(0, 10);
+    const slots = (freeByDate[date] ?? []).map(([start, end]) => ({
+      start: `${date}T${start}:00+03:00`,
+      end: `${date}T${end}:00+03:00`,
+    }));
+    return { date, slots };
+  });
+  return { days };
 }

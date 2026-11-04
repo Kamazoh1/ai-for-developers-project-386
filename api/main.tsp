@@ -123,6 +123,32 @@ model CreateEventType {
   durationMinutes: int32;
 }
 
+// --- slots -----------------------------------------------------------------
+
+/** A free interval of one event type, as long as that type's duration. */
+model Slot {
+  /** Start instant, RFC 3339 with the calendar timezone's offset. Always on the 30-minute grid. */
+  start: offsetDateTime;
+
+  /** End instant, RFC 3339 with the calendar timezone's offset. Never later than the end of working hours. */
+  end: offsetDateTime;
+}
+
+/** One calendar day of the booking window. */
+model SlotDay {
+  /** The day's local date in the calendar timezone. */
+  date: plainDate;
+
+  /** Free slots of this day in ascending order; empty when the day has none. */
+  slots: Slot[];
+}
+
+/** The booking window of one event type. */
+model Slots {
+  /** One entry per day of the booking window, today first; days without free slots are included. */
+  days: SlotDay[];
+}
+
 @route("/api/event-types")
 interface EventTypesApi {
   /** All event types, in creation order. */
@@ -130,6 +156,10 @@ interface EventTypesApi {
 
   /** One event type by its id. */
   @get get(@path id: string): EventType | EventTypeNotFound;
+
+  /** Free slots of the event type for each day of the booking window. */
+  @route("/{id}/slots")
+  @get slots(@path id: string): Slots | EventTypeNotFound;
 }
 
 @route("/api/admin/event-types")
