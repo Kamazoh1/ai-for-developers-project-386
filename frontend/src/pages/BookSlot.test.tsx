@@ -189,6 +189,19 @@ describe("booking a slot", () => {
     expect(await screen.findByRole("region", { name: "Запись подтверждена" })).toBeVisible();
   });
 
+  it("treats a 503 without the service_busy code as a general failure", async () => {
+    server.use(http.post(BOOKINGS, () => error(503, "upstream_unavailable"), { once: true }));
+    await pickFirstSlot();
+
+    await fillAndSubmit("Мария", "maria@example.com");
+
+    const form = screen.getByRole("form", { name: "Запись на 09:00" });
+    expect(await within(form).findByRole("alert")).toHaveTextContent(
+      "Не удалось записаться. Попробуйте ещё раз",
+    );
+    expect(within(form).getByLabelText("Имя")).toHaveValue("Мария");
+  });
+
   it("reports a network failure at the form and lets the guest try again", async () => {
     server.use(http.post(BOOKINGS, () => HttpResponse.error(), { once: true }));
     await pickFirstSlot();

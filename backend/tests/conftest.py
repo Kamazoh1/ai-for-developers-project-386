@@ -9,7 +9,8 @@ building clients by hand in test modules.
 Every client gets its own temporary SQLite *file* (never in-memory: connections
 must share one database). Pass ``database_path`` to reopen an existing file.
 Pass ``now`` (a timezone-aware datetime) to fix the clock; "now" is an app
-dependency, not a patched global.
+dependency, not a patched global. Pass ``lock_timeout_seconds`` to shorten the wait for the
+database write lock (30 s by default) so a ``503 service_busy`` can be tested without sleeping.
 """
 
 from collections.abc import Callable, Iterator
@@ -40,6 +41,7 @@ def make_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Cli
         calendar_timezone: str | None = None,
         database_path: Path | None = None,
         now: datetime | None = None,
+        lock_timeout_seconds: float | None = None,
     ) -> TestClient:
         nonlocal created
         created += 1
@@ -48,6 +50,9 @@ def make_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Cli
             monkeypatch.setenv("CALENDAR_TIMEZONE", calendar_timezone)
         path = database_path or tmp_path / f"calendar-{created}.db"
         monkeypatch.setenv("DATABASE_PATH", str(path))
+        monkeypatch.delenv("DATABASE_LOCK_TIMEOUT_SECONDS", raising=False)
+        if lock_timeout_seconds is not None:
+            monkeypatch.setenv("DATABASE_LOCK_TIMEOUT_SECONDS", str(lock_timeout_seconds))
         clock = None if now is None else (lambda: now)
         return stack.enter_context(TestClient(create_app(now=clock)))
 

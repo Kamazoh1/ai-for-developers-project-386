@@ -38,7 +38,7 @@ def create_app(now: Clock | None = None) -> FastAPI:
     app.state.clock = now or system_clock
     app.state.calendar_timezone = config.calendar_timezone
 
-    app.state.db = Database(config.database_path)
+    app.state.db = Database(config.database_path, config.lock_timeout_seconds)
     app.state.db.create_schema()
 
     @app.get("/health")

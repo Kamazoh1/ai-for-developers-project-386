@@ -16,6 +16,11 @@ DEFAULT_TIMEZONE = "Europe/Moscow"
 DATABASE_PATH_ENV = "DATABASE_PATH"
 DEFAULT_DATABASE_PATH = "call-calendar.db"  # relative to the working directory
 
+# How long a booking waits for the database write lock before `503 service_busy` (ADR 0002).
+# Tests shorten it to see the 503 without waiting.
+LOCK_TIMEOUT_ENV = "DATABASE_LOCK_TIMEOUT_SECONDS"
+DEFAULT_LOCK_TIMEOUT_SECONDS = 30.0
+
 WORKING_HOURS_START = time(9, 0)
 WORKING_HOURS_END = time(18, 0)
 SLOT_STEP_MINUTES = 30
@@ -27,6 +32,7 @@ OWNER_NAME = "Алексей Иванов"
 class Settings:
     calendar_timezone: str
     database_path: str
+    lock_timeout_seconds: float
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -41,4 +47,18 @@ class Settings:
         return cls(
             calendar_timezone=name,
             database_path=os.environ.get(DATABASE_PATH_ENV, DEFAULT_DATABASE_PATH),
+            lock_timeout_seconds=_lock_timeout(),
         )
+
+
+def _lock_timeout() -> float:
+    raw = os.environ.get(LOCK_TIMEOUT_ENV)
+    if raw is None:
+        return DEFAULT_LOCK_TIMEOUT_SECONDS
+    try:
+        seconds = float(raw)
+    except ValueError:
+        seconds = -1.0
+    if seconds < 0:
+        raise ValueError(f"{LOCK_TIMEOUT_ENV}={raw!r} is not a non-negative number of seconds")
+    return seconds

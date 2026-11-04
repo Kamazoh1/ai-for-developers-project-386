@@ -13,9 +13,6 @@ from contextlib import closing, contextmanager
 
 from fastapi import Request
 
-# How long a writer waits for the database lock before giving up (ADR 0002).
-LOCK_TIMEOUT_SECONDS = 30
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS event_types (
     id               TEXT PRIMARY KEY,
@@ -37,14 +34,16 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 
 class Database:
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, lock_timeout_seconds: float) -> None:
         self.path = path
+        # How long a writer waits for the database lock before giving up (ADR 0002).
+        self.lock_timeout_seconds = lock_timeout_seconds
 
     @contextmanager
     def connect(self) -> Generator[sqlite3.Connection]:
         """A connection in autocommit mode with rows addressable by column name."""
         with closing(
-            sqlite3.connect(self.path, timeout=LOCK_TIMEOUT_SECONDS, isolation_level=None)
+            sqlite3.connect(self.path, timeout=self.lock_timeout_seconds, isolation_level=None)
         ) as connection:
             connection.row_factory = sqlite3.Row
             yield connection
