@@ -10,6 +10,7 @@ from pydantic import Field, StringConstraints
 from app.clock import CalendarTimezone, Now
 from app.db import Database, get_db
 from app.errors import ApiError
+from app.occupancy import booked_intervals, without_booked
 from app.schemas import ApiModel
 from app.slots import window_slots
 
@@ -46,16 +47,21 @@ def list_event_types(db: Annotated[Database, Depends(get_db)]) -> list[EventType
     return [EventType(**dict(row)) for row in rows]
 
 
+def find_event_type(connection: sqlite3.Connection, event_type_id: str) -> EventType | None:
+    row = connection.execute(
+        "SELECT id, name, description, duration_minutes FROM event_types WHERE id = ?",
+        (event_type_id,),
+    ).fetchone()
+    return None if row is None else EventType(**dict(row))
+
+
 @router.get("/api/event-types/{event_type_id}")
 def get_event_type(event_type_id: str, db: Annotated[Database, Depends(get_db)]) -> EventType:
     with db.connect() as connection:
-        row = connection.execute(
-            "SELECT id, name, description, duration_minutes FROM event_types WHERE id = ?",
-            (event_type_id,),
-        ).fetchone()
-    if row is None:
+        event_type = find_event_type(connection, event_type_id)
+    if event_type is None:
         raise ApiError(404, "event_type_not_found", "No event type with this id")
-    return EventType(**dict(row))
+    return event_type
 
 
 class Slot(ApiModel):
@@ -80,7 +86,9 @@ def get_slots(
     timezone: CalendarTimezone,
 ) -> Slots:
     event_type = get_event_type(event_type_id, db)
-    days = window_slots(now, timezone, event_type.duration_minutes)
+    with db.connect() as connection:
+        booked = booked_intervals(connection, now)
+    days = without_booked(window_slots(now, timezone, event_type.duration_minutes), booked)
     return Slots(
         days=[
             SlotDay(date=day.date, slots=[Slot(start=s.start, end=s.end) for s in day.slots])

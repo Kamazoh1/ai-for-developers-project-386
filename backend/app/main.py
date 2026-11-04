@@ -2,7 +2,7 @@ from datetime import time
 
 from fastapi import FastAPI
 
-from app import event_types, settings
+from app import bookings, event_types, settings
 from app.clock import Clock, system_clock
 from app.db import Database
 from app.errors import install_error_handlers
@@ -58,6 +58,7 @@ def create_app(now: Clock | None = None) -> FastAPI:
         )
 
     app.include_router(event_types.router)
+    app.include_router(bookings.router)
 
     return app
 

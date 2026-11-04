@@ -4,7 +4,7 @@ One file database whose path comes from settings. The schema is created at
 startup (``Database.create_schema``), idempotently. Connections are short-lived:
 open one per unit of work with ``Database.connect()``. They run in autocommit
 mode, so a unit of work that needs a transaction opens it explicitly; the
-booking flow (ADR 0002) will use ``BEGIN IMMEDIATE`` for its overlap check.
+booking flow (``bookings.create_booking``, ADR 0002) uses ``BEGIN IMMEDIATE``.
 """
 
 import sqlite3
@@ -22,6 +22,16 @@ CREATE TABLE IF NOT EXISTS event_types (
     name             TEXT NOT NULL,
     description      TEXT NOT NULL,
     duration_minutes INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS bookings (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type_id TEXT NOT NULL REFERENCES event_types(id),
+    start_utc     TEXT NOT NULL,
+    end_utc       TEXT NOT NULL,
+    guest_name    TEXT NOT NULL,
+    guest_email   TEXT NOT NULL,
+    created_at    TEXT NOT NULL
 );
 """
 
