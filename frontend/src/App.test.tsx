@@ -43,16 +43,18 @@ describe("header", () => {
     expect(within(header).getByRole("link", { name: "Calendar" })).toHaveAttribute("href", "/");
 
     const book = within(header).getByRole("link", { name: "Записаться" });
-    const events = within(header).getByRole("link", { name: "Предстоящие события" });
+    const admin = within(header).getByRole("link", { name: "Админка" });
     expect(book).toHaveAttribute("href", "/book");
-    expect(events).toHaveAttribute("href", "/events");
+    expect(admin).toHaveAttribute("href", "/admin");
     expect(book).not.toHaveAttribute("aria-current");
-    expect(events).not.toHaveAttribute("aria-current");
+    expect(admin).not.toHaveAttribute("aria-current");
+    expect(within(header).queryByRole("link", { name: "Предстоящие события" })).toBeNull();
   });
 
   it.each([
-    ["/book", "Записаться", "Предстоящие события"],
-    ["/events", "Предстоящие события", "Записаться"],
+    ["/book", "Записаться", "Админка"],
+    ["/admin/bookings", "Админка", "Записаться"],
+    ["/admin/event-types", "Админка", "Записаться"],
   ])("highlights only the current section on %s", (path, current, other) => {
     renderAt(path);
 
@@ -76,12 +78,20 @@ describe("routing", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Запись на звонок" })).toBeInTheDocument();
   });
 
-  it("opens the upcoming events page", () => {
+  it("opens the admin area from the header", async () => {
+    renderAt("/");
+
+    await userEvent.click(
+      within(screen.getByRole("banner")).getByRole("link", { name: "Админка" }),
+    );
+
+    expect(await screen.findByText(/Предстоящих встреч нет/)).toBeInTheDocument();
+  });
+
+  it("sends the old /events address to the landing page, without a redirect page of its own", () => {
     renderAt("/events");
 
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Предстоящие события" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Calendar" })).toBeInTheDocument();
   });
 
   it("sends an unknown address back to the landing page", () => {

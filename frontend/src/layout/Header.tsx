@@ -15,8 +15,8 @@ export default function Header() {
           <NavLink to="/book" className={classes.link}>
             Записаться
           </NavLink>
-          <NavLink to="/events" className={classes.link}>
-            Предстоящие события
+          <NavLink to="/admin" className={classes.link}>
+            Админка
           </NavLink>
         </Group>
       </Group>

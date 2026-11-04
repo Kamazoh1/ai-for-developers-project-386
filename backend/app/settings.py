@@ -1,7 +1,8 @@
 """Calendar configuration.
 
-Only the calendar timezone is configurable (ADR 0001); the remaining
-parameters and the owner profile are constants exposed read-only by the API.
+The calendar timezone (ADR 0001) and the SQLite database path are configurable;
+the remaining parameters and the owner profile are constants exposed read-only
+by the API.
 """
 
 import os
@@ -11,6 +12,9 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 TIMEZONE_ENV = "CALENDAR_TIMEZONE"
 DEFAULT_TIMEZONE = "Europe/Moscow"
+
+DATABASE_PATH_ENV = "DATABASE_PATH"
+DEFAULT_DATABASE_PATH = "call-calendar.db"  # relative to the working directory
 
 WORKING_HOURS_START = time(9, 0)
 WORKING_HOURS_END = time(18, 0)
@@ -22,6 +26,7 @@ OWNER_NAME = "Алексей Иванов"
 @dataclass(frozen=True)
 class Settings:
     calendar_timezone: str
+    database_path: str
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -33,4 +38,7 @@ class Settings:
                 f"{TIMEZONE_ENV}={name!r} is not a valid IANA time zone "
                 f"(expected a name like {DEFAULT_TIMEZONE!r})"
             ) from error
-        return cls(calendar_timezone=name)
+        return cls(
+            calendar_timezone=name,
+            database_path=os.environ.get(DATABASE_PATH_ENV, DEFAULT_DATABASE_PATH),
+        )

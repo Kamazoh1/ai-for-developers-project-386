@@ -1,4 +1,4 @@
-import type { CalendarSettings } from "../api/types.gen.ts";
+import type { CalendarSettings, EventType } from "../api/types.gen.ts";
 
 /** Base URL the app talks to in tests (see `test.env` in vite.config.ts). */
 const API_URL = import.meta.env.VITE_API_URL;
@@ -16,6 +16,16 @@ export function calendar(overrides: Partial<CalendarSettings> = {}): CalendarSet
     slotStepMinutes: 30,
     bookingWindowDays: 14,
     owner: { name: "Алексей Иванов" },
+    ...overrides,
+  };
+}
+
+export function eventType(overrides: Partial<EventType> = {}): EventType {
+  return {
+    id: "intro-call",
+    name: "Знакомство",
+    description: "Короткий созвон",
+    durationMinutes: 15,
     ...overrides,
   };
 }

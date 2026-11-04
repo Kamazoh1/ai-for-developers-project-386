@@ -27,6 +27,11 @@ Object.defineProperty(window, "matchMedia", {
   }),
 });
 
+// Mantine's autosizing Textarea listens for font loading on `document.fonts`.
+Object.defineProperty(document, "fonts", {
+  value: { addEventListener: vi.fn(), removeEventListener: vi.fn() },
+});
+
 class ResizeObserverStub {
   observe() {}
   unobserve() {}
