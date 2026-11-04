@@ -153,3 +153,26 @@ def test_a_duplicate_id_is_a_conflict(client: TestClient) -> None:
     assert isinstance(body["message"], str)
     assert "fields" not in body
     assert client.get("/api/event-types").json() == [INTRO]
+
+
+def test_guest_opens_one_event_type_by_id(client: TestClient) -> None:
+    client.post("/api/admin/event-types", json=INTRO)
+    client.post("/api/admin/event-types", json={**INTRO, "id": "other", "name": "Другое"})
+
+    response = client.get("/api/event-types/intro-call")
+
+    assert response.status_code == 200
+    assert response.json() == INTRO
+
+
+@pytest.mark.parametrize("event_type_id", ["missing", "Intro-Call", "intro call", "звонок"])
+def test_an_unknown_event_type_is_not_found(client: TestClient, event_type_id: str) -> None:
+    client.post("/api/admin/event-types", json=INTRO)
+
+    response = client.get(f"/api/event-types/{event_type_id}")
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["code"] == "event_type_not_found"
+    assert isinstance(body["message"], str)
+    assert "fields" not in body
