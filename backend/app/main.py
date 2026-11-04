@@ -3,6 +3,7 @@ from datetime import time
 from fastapi import FastAPI
 
 from app import event_types, settings
+from app.clock import Clock, system_clock
 from app.db import Database
 from app.errors import install_error_handlers
 from app.schemas import ApiModel
@@ -25,11 +26,17 @@ class CalendarSettings(ApiModel):
     owner: Owner
 
 
-def create_app() -> FastAPI:
-    """Build the app. Reads settings from the environment and refuses to start on bad ones."""
+def create_app(now: Clock | None = None) -> FastAPI:
+    """Build the app. Reads settings from the environment and refuses to start on bad ones.
+
+    ``now`` replaces the system clock (tests fix it); it returns a timezone-aware datetime.
+    """
     config = settings.Settings.from_env()
     app = FastAPI(title="Call Calendar")
     install_error_handlers(app)
+
+    app.state.clock = now or system_clock
+    app.state.calendar_timezone = config.calendar_timezone
 
     app.state.db = Database(config.database_path)
     app.state.db.create_schema()

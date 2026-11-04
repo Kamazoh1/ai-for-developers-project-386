@@ -1,14 +1,17 @@
 """Event types: storage and the public and admin endpoints (ADR 0003)."""
 
 import sqlite3
+from datetime import date, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from pydantic import Field, StringConstraints
 
+from app.clock import CalendarTimezone, Now
 from app.db import Database, get_db
 from app.errors import ApiError
 from app.schemas import ApiModel
+from app.slots import window_slots
 
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9-]{1,40}$")]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
@@ -53,6 +56,37 @@ def get_event_type(event_type_id: str, db: Annotated[Database, Depends(get_db)])
     if row is None:
         raise ApiError(404, "event_type_not_found", "No event type with this id")
     return EventType(**dict(row))
+
+
+class Slot(ApiModel):
+    start: datetime
+    end: datetime
+
+
+class SlotDay(ApiModel):
+    date: date
+    slots: list[Slot]
+
+
+class Slots(ApiModel):
+    days: list[SlotDay]
+
+
+@router.get("/api/event-types/{event_type_id}/slots")
+def get_slots(
+    event_type_id: str,
+    db: Annotated[Database, Depends(get_db)],
+    now: Now,
+    timezone: CalendarTimezone,
+) -> Slots:
+    event_type = get_event_type(event_type_id, db)
+    days = window_slots(now, timezone, event_type.duration_minutes)
+    return Slots(
+        days=[
+            SlotDay(date=day.date, slots=[Slot(start=s.start, end=s.end) for s in day.slots])
+            for day in days
+        ]
+    )
 
 
 @router.post("/api/admin/event-types", status_code=status.HTTP_201_CREATED)
