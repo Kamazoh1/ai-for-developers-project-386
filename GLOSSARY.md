@@ -12,6 +12,10 @@ _Avoid_: Admin, host, user
 A person who books a slot, identified only by the name and email they enter. Has no account.
 _Avoid_: User, client, customer, invitee
 
+**Admin area**:
+The part of the interface where the owner manages event types and sees upcoming bookings. Open to anyone who knows its address, since there is no sign-in.
+_Avoid_: Dashboard, panel
+
 **Event type**:
 A kind of call the owner offers, defined by an id, a name, a description and a duration. Slots and bookings take their length from it.
 _Avoid_: Meeting type, call type, service
