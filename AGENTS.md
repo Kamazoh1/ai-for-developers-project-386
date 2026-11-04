@@ -23,6 +23,7 @@ All tooling versions are pinned in `mise.toml`; run everything through mise.
 ## Rules
 
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`, ...); the `commit-msg` hook enforces it.
+- A commit that implements a ticket references the ticket it closes, e.g. `feat: book a free slot (#18)`. GitHub turns the number into a link, so the history shows which commit did which task.
 - The API contract in `api/main.tsp` is the source of truth; change it first, then implement the backend to match.
 - Do not edit or delete `.github/workflows/hexlet-check.yml`.
 - Keep `mise run check` green before committing.
