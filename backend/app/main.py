@@ -1,16 +1,11 @@
 from datetime import time
 
 from fastapi import FastAPI
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
 
-from app import settings
-
-
-class ApiModel(BaseModel):
-    """Base for API payloads: camelCase on the wire, as in the contract."""
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+from app import event_types, settings
+from app.db import Database
+from app.errors import install_error_handlers
+from app.schemas import ApiModel
 
 
 class WorkingHours(ApiModel):
@@ -34,6 +29,10 @@ def create_app() -> FastAPI:
     """Build the app. Reads settings from the environment and refuses to start on bad ones."""
     config = settings.Settings.from_env()
     app = FastAPI(title="Call Calendar")
+    install_error_handlers(app)
+
+    app.state.db = Database(config.database_path)
+    app.state.db.create_schema()
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -50,6 +49,8 @@ def create_app() -> FastAPI:
             booking_window_days=settings.BOOKING_WINDOW_DAYS,
             owner=Owner(name=settings.OWNER_NAME),
         )
+
+    app.include_router(event_types.router)
 
     return app
 
