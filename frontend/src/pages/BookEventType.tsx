@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router";
 import { eventTypesApiGet } from "../api/sdk.gen.ts";
 import { RequestBoundary } from "../request/RequestBoundary.tsx";
 import { useRequest } from "../request/useRequest.ts";
+import { SlotPicker } from "./SlotPicker.tsx";
 
 function BackToTypes() {
   return (
@@ -13,7 +14,7 @@ function BackToTypes() {
   );
 }
 
-/** `/book/:eventTypeId`: the type the guest chose. Calendar and slots arrive in later tickets. */
+/** `/book/:eventTypeId`: the type the guest chose, its 14-day window and free slots. */
 export default function BookEventType() {
   const { eventTypeId = "" } = useParams();
   // An unknown id is an answer, not a failure: it resolves to `null`; anything else wrong is an error.
@@ -38,6 +39,7 @@ export default function BookEventType() {
                 {`${type.durationMinutes} минут`}
               </Badge>
               {type.description && <Text c="dimmed">{type.description}</Text>}
+              <SlotPicker eventTypeId={type.id} />
               <BackToTypes />
             </>
           )
