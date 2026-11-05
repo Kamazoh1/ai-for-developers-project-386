@@ -78,11 +78,25 @@ run = [
   "npm run format --prefix frontend",
 ]
 
+# --- browser tests (separate from `check`: they need a browser and take a while) ---
+
+[tasks."e2e:install"]
+description = "Install the e2e package and the Chromium browser for Playwright"
+run = [
+  "npm ci --prefix e2e",
+  "npm exec --prefix e2e -- playwright install chromium",
+]
+
+[tasks.e2e]
+description = "Browser scenario on a real backend (temporary DB) and frontend; needs `mise run install` and `e2e:install`"
+depends = ["generate"]
+run = "npm test --prefix e2e"
+
 # --- development servers (mise daemons, managed by pitchfork) ---------------
 # mise daemons start | stop | status | logs
 
 [daemons.backend]
-run = "cd backend && exec uv run fastapi dev --port 8000"
+run = "cd backend && exec uv run uvicorn --factory app.main:create_app --reload --port 8000"
 ready_port = 8000
 
 [daemons.frontend]

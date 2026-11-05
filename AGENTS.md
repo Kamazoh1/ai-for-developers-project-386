@@ -10,6 +10,7 @@ All tooling versions are pinned in `mise.toml`; run everything through mise.
 - `mise run hooks` — install git hooks (pre-commit runs `mise run precommit`: lint + types)
 - `mise run check` — lint + types + tests + build (what CI runs)
 - `mise run test` — pytest only
+- `mise run e2e` — browser scenario (Playwright) on a real backend and frontend; not part of `check`, needs `mise run e2e:install` once
 - `mise run fix` — auto-fix lint and formatting
 - `mise run generate` — rebuild OpenAPI and the frontend SDK after editing `api/main.tsp`
 - `mise daemons start|stop|status|logs` — dev servers: backend :8000, frontend :5173
@@ -18,11 +19,13 @@ All tooling versions are pinned in `mise.toml`; run everything through mise.
 
 - `api/` — TypeSpec contract (`main.tsp`), emits `api/dist/openapi.yaml`
 - `backend/` — FastAPI (Python 3.13, uv). App in `backend/app`, tests in `backend/tests`
+  The app is built by the factory `app.main:create_app` (no module-level `app`, so importing has no side effects); start it with `uvicorn --factory app.main:create_app`
 - `frontend/` — Vite + React + TypeScript + Mantine. `frontend/src/api` is generated, never edit it
 
 ## Rules
 
 - Commits follow Conventional Commits (`feat:`, `fix:`, `chore:`, ...); the `commit-msg` hook enforces it.
+- A commit that implements a ticket references the ticket it closes, e.g. `feat: book a free slot (#18)`. GitHub turns the number into a link, so the history shows which commit did which task.
 - The API contract in `api/main.tsp` is the source of truth; change it first, then implement the backend to match.
 - Do not edit or delete `.github/workflows/hexlet-check.yml`.
 - Keep `mise run check` green before committing.
