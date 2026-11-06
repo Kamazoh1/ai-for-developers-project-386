@@ -45,6 +45,16 @@ mise run e2e           # поднимает бэкенд на временной
 
 Задача `e2e` не входит в `mise run check`; в CI для неё отдельный job. Трейс упавшего теста лежит в `e2e/test-results/`.
 
+### Релизы
+
+Релизы собирает [release-please](https://github.com/googleapis/release-please) из Conventional Commits. Версия одна на весь репозиторий; тег выглядит как `v0.2.0`.
+
+1. После каждого влития в `main` workflow `release-please.yml` открывает (или обновляет) release PR с заголовком вида `chore(main): release 0.2.0`. В нём обновлённый `CHANGELOG.md` и новая версия в `backend/pyproject.toml`, `backend/uv.lock`, `frontend/package.json`, `frontend/package-lock.json` и `version.txt`.
+2. Версию определяют типы коммитов с прошлого релиза: `fix:` даёт патч, `feat:` — минор (пока версия `0.x`), `!` или `BREAKING CHANGE:` — мажор. Коммиты `chore:`, `docs:`, `ci:` в changelog не попадают и релиз сами не открывают.
+3. Слияние release PR создаёт тег и релиз на GitHub с этим changelog. Вручную версии и changelog править не нужно.
+
+Для работы в настройках репозитория (Actions → General) должна быть включена опция «Allow GitHub Actions to create and approve pull requests».
+
 <!-- Добавьте запись asciinema — именно это смотрит работодатель -->
 
 ---
