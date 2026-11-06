@@ -51,7 +51,8 @@ run = [
 ]
 
 [tasks.test]
-description = "Backend pytest + frontend vitest"
+description = "Backend pytest (incl. the contract test) + frontend vitest"
+depends = ["generate"]
 run = [
   "uv run --project backend pytest backend",
   "npm run test --prefix frontend",

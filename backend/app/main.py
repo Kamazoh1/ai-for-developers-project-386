@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from app import bookings, event_types, settings
 from app.clock import Clock, system_clock
 from app.db import Database
-from app.errors import install_error_handlers
+from app.errors import install_error_handlers, install_openapi_cleanup
 from app.schemas import ApiModel
 
 
@@ -37,6 +37,7 @@ def create_app(now: Clock | None = None) -> FastAPI:
     config = settings.Settings.from_env()
     app = FastAPI(title="Call Calendar")
     install_error_handlers(app)
+    install_openapi_cleanup(app)
 
     app.state.clock = now or system_clock
     app.state.calendar_timezone = config.calendar_timezone

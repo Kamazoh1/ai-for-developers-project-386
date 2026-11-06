@@ -16,7 +16,7 @@ from pydantic import AwareDatetime, BeforeValidator, StringConstraints
 
 from app.clock import CalendarTimezone, Now, NowSource
 from app.db import Database, get_db, lock_timeout_as_service_busy
-from app.errors import ApiError
+from app.errors import ApiError, declare_errors
 from app.event_types import find_event_type
 from app.occupancy import conflicts_with_booking, from_stored, to_stored
 from app.schemas import ApiModel
@@ -68,7 +68,11 @@ def invalid_slot() -> ApiError:
 router = APIRouter()
 
 
-@router.post("/api/bookings", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/api/bookings",
+    status_code=status.HTTP_201_CREATED,
+    responses=declare_errors(409, 422, 503),
+)
 def create_booking(
     body: CreateBooking,
     db: Annotated[Database, Depends(get_db)],
