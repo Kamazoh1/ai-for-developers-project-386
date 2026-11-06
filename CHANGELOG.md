@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0](https://github.com/Kamazoh1/ai-for-developers-project-386/compare/v0.2.0...v0.3.0) (2026-11-06)
+
+
+### Features
+
+* Docker image listening on PORT, Render blueprint and MCP config ([#32](https://github.com/Kamazoh1/ai-for-developers-project-386/issues/32)) ([140ba56](https://github.com/Kamazoh1/ai-for-developers-project-386/commit/140ba566a55404de8d0773d9284833700016ca06))
+* Docker image on PORT, Render blueprint and MCP config ([#32](https://github.com/Kamazoh1/ai-for-developers-project-386/issues/32)) ([d2d80c7](https://github.com/Kamazoh1/ai-for-developers-project-386/commit/d2d80c72f487dee35e763cd64d514e767380e508))
+* serve the built frontend from the API process ([#32](https://github.com/Kamazoh1/ai-for-developers-project-386/issues/32)) ([c343979](https://github.com/Kamazoh1/ai-for-developers-project-386/commit/c34397982bf6fa7e46055fd671a65699ed6caa20))
+
 ## [0.2.0](https://github.com/Kamazoh1/ai-for-developers-project-386/compare/v0.1.0...v0.2.0) (2026-11-06)
 
 
