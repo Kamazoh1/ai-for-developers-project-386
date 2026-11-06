@@ -51,7 +51,8 @@ run = [
 ]
 
 [tasks.test]
-description = "Backend pytest + frontend vitest"
+description = "Backend pytest (incl. the contract test) + frontend vitest"
+depends = ["generate"]
 run = [
   "uv run --project backend pytest backend",
   "npm run test --prefix frontend",
@@ -91,6 +92,13 @@ run = [
 description = "Browser scenario on a real backend (temporary DB) and frontend; needs `mise run install` and `e2e:install`"
 depends = ["generate"]
 run = "npm test --prefix e2e"
+
+# --- everything, in one command (locally and in CI) ---------------------------
+
+[tasks.verify]
+description = "Every check: `check` (lint, types, tests, build), then the `e2e` browser scenario; needs `e2e:install` once"
+# Sequential on purpose: the build and the browser scenario would fight over the CPU if run in parallel.
+run = [{ task = "check" }, { task = "e2e" }]
 
 # --- development servers (mise daemons, managed by pitchfork) ---------------
 # mise daemons start | stop | status | logs

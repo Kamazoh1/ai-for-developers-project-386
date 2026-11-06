@@ -30,7 +30,8 @@ mise run hooks      # git-хуки
 ```bash
 mise daemons start   # бекенд :8000, фронтенд :5173
 mise daemons stop
-mise run check       # линтеры, типы, тесты, сборка
+mise run check       # быстрые проверки: линтеры, типы, тесты, сборка
+mise run verify      # всё сразу: check + браузерный сценарий e2e (то же самое запускает CI)
 ```
 
 ### Сквозные тесты (e2e)
@@ -43,7 +44,7 @@ mise run e2e:install   # один раз: пакет e2e и браузер Chrom
 mise run e2e           # поднимает бэкенд на временной SQLite-базе и фронтенд на свободных портах, гоняет сценарий, останавливает всё
 ```
 
-Задача `e2e` не входит в `mise run check`; в CI для неё отдельный job. Трейс упавшего теста лежит в `e2e/test-results/`.
+Задача `e2e` входит в `mise run verify` (после `check`) и не входит в быстрый `mise run check`. В CI один job запускает `mise run verify`, поэтому локальный и CI-прогон совпадают. Трейс упавшего теста лежит в `e2e/test-results/`.
 
 ### Релизы
 
