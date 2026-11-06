@@ -8,7 +8,7 @@ from pydantic import Field, StringConstraints
 
 from app.clock import CalendarTimezone, Now
 from app.db import Database, get_db, lock_timeout_as_service_busy
-from app.errors import ApiError
+from app.errors import ApiError, declare_errors
 from app.occupancy import booked_intervals, without_booked
 from app.schemas import ApiModel
 from app.slots import SlotDay, window_slots
@@ -58,10 +58,10 @@ def event_type_not_found() -> ApiError:
     return ApiError(404, "event_type_not_found", "No event type with this id")
 
 
-@router.get("/api/event-types/{event_type_id}")
-def get_event_type(event_type_id: str, db: Annotated[Database, Depends(get_db)]) -> EventType:
+@router.get("/api/event-types/{id}", responses=declare_errors(404))
+def get_event_type(id: str, db: Annotated[Database, Depends(get_db)]) -> EventType:
     with db.connect() as connection:
-        event_type = find_event_type(connection, event_type_id)
+        event_type = find_event_type(connection, id)
     if event_type is None:
         raise event_type_not_found()
     return event_type
@@ -71,15 +71,15 @@ class Slots(ApiModel):
     days: list[SlotDay]
 
 
-@router.get("/api/event-types/{event_type_id}/slots")
+@router.get("/api/event-types/{id}/slots", responses=declare_errors(404))
 def get_slots(
-    event_type_id: str,
+    id: str,
     db: Annotated[Database, Depends(get_db)],
     now: Now,
     timezone: CalendarTimezone,
 ) -> Slots:
     with db.connect() as connection:
-        event_type = find_event_type(connection, event_type_id)
+        event_type = find_event_type(connection, id)
         if event_type is None:
             raise event_type_not_found()
         booked = booked_intervals(connection, now)
@@ -87,7 +87,11 @@ def get_slots(
     return Slots(days=days)
 
 
-@router.post("/api/admin/event-types", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/api/admin/event-types",
+    status_code=status.HTTP_201_CREATED,
+    responses=declare_errors(409, 422, 503),
+)
 def create_event_type(body: CreateEventType, db: Annotated[Database, Depends(get_db)]) -> EventType:
     try:
         with db.connect() as connection, lock_timeout_as_service_busy():
