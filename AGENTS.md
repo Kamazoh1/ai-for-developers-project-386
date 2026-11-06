@@ -10,7 +10,7 @@ All tooling versions are pinned in `mise.toml`; run everything through mise.
 - `mise run hooks` — install git hooks (pre-commit runs `mise run precommit`: lint + types)
 - `mise run verify` — **the one command for everything**: `check` + the browser scenario `e2e`. Same locally and in CI (CI runs exactly this). Needs `mise run e2e:install` once
 - `mise run check` — fast part of `verify`: lint + types + tests + build (the pre-commit hook runs a subset of it)
-- `mise run test` — pytest only
+- `mise run test` — pytest + vitest; regenerates the contract first, since `backend/tests/test_contract.py` checks real responses against `api/dist/openapi.yaml`
 - `mise run e2e` — browser scenario (Playwright) on a real backend and frontend, without mocked API; part of `verify`, needs `mise run e2e:install` once
 - `mise run fix` — auto-fix lint and formatting
 - `mise run generate` — rebuild OpenAPI and the frontend SDK after editing `api/main.tsp`
