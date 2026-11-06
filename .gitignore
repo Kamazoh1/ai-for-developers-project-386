@@ -14,6 +14,10 @@ dist/
 # generated from api/main.tsp (run `mise run generate`)
 frontend/src/api/
 
+# secrets: never commit keys or tokens (the Render API key comes from RENDER_API_KEY)
+.env
+.env.*
+
 # editors / os
 .idea/
 .vscode/
