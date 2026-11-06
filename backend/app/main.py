@@ -6,6 +6,7 @@ from app import bookings, event_types, settings
 from app.clock import Clock, system_clock
 from app.db import Database
 from app.errors import install_error_handlers, install_openapi_cleanup
+from app.frontend import install_frontend
 from app.schemas import ApiModel
 
 
@@ -63,5 +64,9 @@ def create_app(now: Clock | None = None) -> FastAPI:
 
     app.include_router(event_types.router)
     app.include_router(bookings.router)
+
+    # Last, so that it only catches what no route above answers.
+    if config.static_dir is not None:
+        install_frontend(app, config.static_dir)
 
     return app

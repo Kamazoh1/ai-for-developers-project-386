@@ -11,7 +11,8 @@ must share one database). Pass ``database_path`` to reopen an existing file.
 Pass ``now`` (a timezone-aware datetime, or a callable returning one for a clock that moves)
 to fix the clock; "now" is an app dependency, not a patched global. Pass
 ``lock_timeout_seconds`` to shorten the wait for the database write lock (30 s by default) so a
-``503 service_busy`` can be tested without sleeping.
+``503 service_busy`` can be tested without sleeping. Pass ``static_dir`` to make the app also
+serve a built frontend from that directory (off by default, like in development).
 """
 
 from collections.abc import Callable, Iterator
@@ -43,9 +44,13 @@ def make_client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Cli
         database_path: Path | None = None,
         now: datetime | Callable[[], datetime] | None = None,
         lock_timeout_seconds: float | None = None,
+        static_dir: Path | None = None,
     ) -> TestClient:
         nonlocal created
         created += 1
+        monkeypatch.delenv("STATIC_DIR", raising=False)
+        if static_dir is not None:
+            monkeypatch.setenv("STATIC_DIR", str(static_dir))
         monkeypatch.delenv("CALENDAR_TIMEZONE", raising=False)
         if calendar_timezone is not None:
             monkeypatch.setenv("CALENDAR_TIMEZONE", calendar_timezone)

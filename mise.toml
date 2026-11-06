@@ -93,6 +93,25 @@ description = "Browser scenario on a real backend (temporary DB) and frontend; n
 depends = ["generate"]
 run = "npm test --prefix e2e"
 
+[tasks."e2e:url"]
+description = "The same browser scenario against a running app, e.g. `mise run e2e:url -- https://<name>.onrender.com`"
+run = "node e2e/remote.mjs"
+
+# --- Docker image (one image: API + built frontend, listens on $PORT) -------------
+
+[tasks."docker:build"]
+description = "Build the Docker image `call-calendar`"
+run = "docker build -t call-calendar ."
+
+[tasks."docker:run"]
+description = "Run the image on $PORT (default 8080): http://localhost:8080"
+depends = ["docker:build"]
+run = 'docker run --rm -e PORT="${PORT:-8080}" -p "${PORT:-8080}:${PORT:-8080}" call-calendar'
+
+[tasks."docker:smoke"]
+description = "Build the image, start it on a free PORT and run the browser scenario against it (needs Docker and `e2e:install`)"
+run = "node e2e/image.mjs"
+
 # --- everything, in one command (locally and in CI) ---------------------------
 
 [tasks.verify]

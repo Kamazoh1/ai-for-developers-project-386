@@ -8,6 +8,7 @@ by the API.
 import os
 from dataclasses import dataclass
 from datetime import time
+from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 TIMEZONE_ENV = "CALENDAR_TIMEZONE"
@@ -15,6 +16,10 @@ DEFAULT_TIMEZONE = "Europe/Moscow"
 
 DATABASE_PATH_ENV = "DATABASE_PATH"
 DEFAULT_DATABASE_PATH = "call-calendar.db"  # relative to the working directory
+
+# A built frontend to serve next to the API (the container image sets it). Off by default:
+# in development Vite serves the frontend and proxies `/api`.
+STATIC_DIR_ENV = "STATIC_DIR"
 
 # How long a booking waits for the database write lock before `503 service_busy` (ADR 0002).
 # Tests shorten it to see the 503 without waiting.
@@ -33,6 +38,7 @@ class Settings:
     calendar_timezone: str
     database_path: str
     lock_timeout_seconds: float
+    static_dir: Path | None = None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -48,7 +54,18 @@ class Settings:
             calendar_timezone=name,
             database_path=os.environ.get(DATABASE_PATH_ENV, DEFAULT_DATABASE_PATH),
             lock_timeout_seconds=_lock_timeout(),
+            static_dir=_static_dir(),
         )
+
+
+def _static_dir() -> Path | None:
+    raw = os.environ.get(STATIC_DIR_ENV, "").strip()
+    if not raw:
+        return None
+    directory = Path(raw)
+    if not directory.is_dir():
+        raise ValueError(f"{STATIC_DIR_ENV}={raw!r} is not a directory")
+    return directory
 
 
 def _lock_timeout() -> float:
